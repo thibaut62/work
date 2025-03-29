@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calcul des Heures de Travail</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@tailwindcss/browser@latest"></script>
+    <style>
+        /* Styles pour les graphiques (Chart.js) */
+        .chart-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px auto;
+        }
+        .mois-container {
+            width: 250px;
+            height: auto;
+            border: 1px solid #ccc;
+            margin: 5px;
+            padding: 5px;
+            display: inline-block;
+            vertical-align: top;
+        }
+        .calendrier-mois {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .calendrier-mois th, .calendrier-mois td {
+            width: 14.28%;
+            height: 30px;
+            border: 1px solid #ddd;
+            padding: 2px;
+            text-align: center;
+            vertical-align: top;
+            overflow: hidden;
+            font-size: 0.7em;
+        }
+        .calendrier-mois th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+        }
+        .jour-travaille {
+            background-color: #f0f0f0;
+        }
+        .entree-jour {
+            display: block;
+            font-size: 0.7em;
+            color: #007bff;
+        }
+        #boutonsFichier {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-inter">
+    <div class="container mx-auto p-6">
+        <h1 class="text-2xl font-semibold text-blue-600 text-center mb-8">Calcul des Heures de Travail</h1>
+
+        <div id="feuille1" class="bg-white shadow-md rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Feuille 1 : Saisie des Données</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label for="dateTravail" class="block text-gray-700 text-sm font-bold mb-2">Date de travail :</label>
+                    <input type="date" id="dateTravail" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                </div>
+                <div>
+                    <label for="heureDebut" class="block text-gray-700 text-sm font-bold mb-2">Heure de début :</label>
+                    <input type="time" id="heureDebut" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                </div>
+                <div>
+                    <label for="heureFin" class="block text-gray-700 text-sm font-bold mb-2">Heure de fin :</label>
+                    <input type="time" id="heureFin" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                </div>
+            </div>
+            <div class="mt-4">
+                <button id="ajouterEntree" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Ajouter Entrée</button>
+            </div>
+
+            <div class="mt-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Affichage des entrées :</h3>
+                <div id="tableauEntrees" class="overflow-x-auto">
+                    <table class="min-w-full leading-normal shadow-md rounded-lg overflow-hidden">
+                        <thead class="bg-gray-200 text-gray-700">
+                            <tr>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold uppercase tracking-wider">Date</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold uppercase tracking-wider">Heure de début</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold uppercase tracking-wider">Heure de fin</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold uppercase tracking-wider">Durée</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white">
+                            <tr>
+                                <td colspan="4" class="px-5 py-5 border-b border-gray-200 text-sm">Aucune entrée ajoutée.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Total par semaine :</h3>
+                    <p id="totalSemaine" class="text-gray-700 font-medium">0 heures 0 minutes</p>
+                    <h3 class="text-lg font-semibold text-gray-800 mt-2 mb-2">Heures supplémentaires cette semaine :</h3>
+                    <p id="suppSemaine" class="text-red-600 font-medium">0 heures 0 minutes</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Total par mois :</h3>
+                    <p id="totalMois" class="text-gray-700 font-medium">0 heures 0 minutes</p>
+                    <h3 class="text-lg font-semibold text-gray-800 mt-2 mb-2">Heures supplémentaires ce mois :</h3>
+                    <p id="suppMois" class="text-red-600 font-medium">0 heures 0 minutes</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Total par année :</h3>
+                    <p id="totalAnnee" class="text-gray-700 font-medium">0 heures 0 minutes</p>
+                    <h3 class="text-lg font-semibold text-gray-800 mt-2 mb-2">Heures supplémentaires cette année :</h3>
+                    <p id="suppAnnee" class="text-red-600 font-medium">0 heures 0 minutes</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Jours travaillés ce mois :</h3>
+                    <p id="joursTravaillesMois" class="text-gray-700 font-medium">0 jours</p>
+                    <h3 class="text-lg font-semibold text-gray-800 mt-2 mb-2">Jours travaillés cette année :</h3>
+                    <p id="joursTravaillesAnnee" class="text-gray-700 font-medium">0 jours</p>
+                </div>
+            </div>
+             <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="selectMois" class="block text-gray-700 text-sm font-bold mb-2">Choisir un mois :</label>
+                    <select id="selectMois" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        <option value="0">Janvier</option>
+                        <option value="1">Février</option>
+                        <option value="2">Mars</option>
+                        <option value="3">Avril</option>
+                        <option value="4">Mai</option>
+                        <option value="5">Juin</option>
+                        <option value="6">Juillet</option>
+                        <option value="7">Août</option>
+                        <option value="8">Septembre</option>
+                        <option value="9">Octobre</option>
+                        <option value="10">Novembre</option>
+                        <option value="11">Décembre</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="selectAnnee" class="block text-gray-700 text-sm font-bold mb-2">Choisir une année :</label>
+                    <select id="selectAnnee" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="feuille2" class="bg-white shadow-md rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Feuille 2 : Calendrier Annuel</h2>
+            <div id="calendrierAnnuel" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                </div>
+        </div>
+
+        <div id="feuille3" class="bg-white shadow-md rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Feuille 3 : Graphique des Heures Annuelles par Mois</h2>
+            <div class="chart-container">
+                <canvas id="graphiqueHeuresAnnuelles"></canvas>
+            </div>
+        </div>
+         <div id="boutonsFichier">
+            <button id="enregistrerFichier" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Enregistrer les données</button>
+            <button id="chargerFichier" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Charger les données</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+       // Récupération des éléments HTML
+        const dateTravailInput = document.getElementById('dateTravail');
+        const heureDebutInput = document.getElementById('heureDebut');
+        const heureFinInput = document.getElementById('heureFin');
+        const ajouterEntreeBtn = document.getElementById('ajouterEntree');
+        const tableauEntrees = document.querySelector('#tableauEntrees tbody');
+        const totalSemaineDisplay = document.getElementById('totalSemaine');
+        const totalMoisDisplay = document.getElementById('totalMois');
+        const totalAnneeDisplay = document.getElementById('totalAnnee');
+        const suppSemaineDisplay = document.getElementById('suppSemaine');
+        const suppMoisDisplay = document.getElementById('suppMois');
+        const suppAnneeDisplay = document.getElementById('suppAnnee');
+        const joursTravaillesMoisDisplay = document.getElementById('joursTravaillesMois');
+        const joursTravaillesAnneeDisplay = document.getElementById('joursTravaillesAnnee');
+        const calendrierAnnuelDiv = document.getElementById('calendrierAnnuel');
+        const graphiqueHeuresAnnuellesCanvas = document.getElementById('graphiqueHeuresAnnuelles');
+        const selectMoisInput = document.getElementById('selectMois');
+        const selectAnneeInput = document.getElementById('selectAnnee');
+        const enregistrerFichierBtn = document.getElementById('enregistrerFichier');
+        const chargerFichierBtn = document.getElementById('chargerFichier');
+
+
+        // Variables globales
+        let entrees = [];
+        const joursParMois = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        const moisFrancais = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
+        let chartInstance = null;
+
+        // Fonction pour calculer la durée entre deux heures
+        function calculerDuree(heureDebut, heureFin) {
+            const debut = new Date(`2000-01-01T${heureDebut}`);
+            const fin = new Date(`2000-01-01T${heureFin}`);
+            let diff = fin.getTime() - debut.getTime();
+             if (diff < 0) {
+                diff += 24 * 60 * 60 * 1000;
+            }
+            const heures = Math.floor(diff / (60 * 60 * 1000));
+            const minutes = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
+            return { heures, minutes };
+        }
+
+        // Fonction pour formater la durée
+        function formaterDuree(heures, minutes) {
+            return `${heures} heures ${minutes} minutes`;
+        }
+
+         // Fonction pour soustraire 30 minutes
+        function soustrairePause(duree) {
+            let totalMinutes = duree.heures * 60 + duree.minutes;
+            totalMinutes -= 30;
+            if (totalMinutes < 0) {
+                totalMinutes = 0;
+            }
+            const heures = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            return { heures, minutes };
+        }
+
+        // Fonction pour ajouter une entrée au tableau
+        function ajouterEntree() {
+            const dateTravail = dateTravailInput.value;
+            const heureDebut = heureDebutInput.value;
+            const heureFin = heureFinInput.value;
+
+            if (!dateTravail || !heureDebut || !heureFin) {
+                alert("Veuillez entrer une date, une heure de début et une heure de fin.");
+                return;
+            }
+
+            const dureeBrute = calculerDuree(heureDebut, heureFin);
+            const duree = soustrairePause(dureeBrute);
+            entrees.push({ date: dateTravail, heureDebut, heureFin, duree });
+
+            // Ajouter la nouvelle entrée au tableau HTML
+            const nouvelleEntree = document.createElement('tr');
+            nouvelleEntree.innerHTML = `
+                <td class="px-5 py-5 border-b border-gray-200 text-sm"><span class="font-italic text-gray-800">${dateTravail}</span></td>
+                <td class="px-5 py-5 border-b border-gray-200 text-sm"><span class="font-medium text-blue-600">${heureDebut}</span></td>
+                <td class="px-5 py-5 border-b border-gray-200 text-sm"><span class="font-medium text-blue-600">${heureFin}</span></td>
+                <td class="px-5 py-5 border-b border-gray-200 text-sm"><span class="font-semibold text-green-600">${formaterDuree(duree.heures, duree.minutes)}</span></td>
+            `;
+            const premiereLigne = tableauEntrees.querySelector('tr');
+            if (premiereLigne && premiereLigne.textContent.includes("Aucune entrée ajoutée")) {
+                tableauEntrees.innerHTML = '';
+            }
+            tableauEntrees.appendChild(nouvelleEntree);
+
+            mettreAJourTotaux();
+            genererCalendrierAnnuel();
+            genererGraphique();
+            dateTravailInput.value = '';
+            heureDebutInput.value = '';
+            heureFinInput.value = '';
+        }
+
+        function calculerTotaux(dateReference) {
+            let totalSemaine = { heures: 0, minutes: 0 };
+            let totalMois = { heures: 0, minutes: 0 };
+            let totalAnnee = { heures: 0, minutes: 0 };
+            let suppSemaine = { heures: 0, minutes: 0 };
+            let suppMois = { heures: 0, minutes: 0 };
+            let suppAnnee = { heures: 0, minutes: 0 };
+            let joursTravaillesMois = new Set();
+            let joursTravaillesAnnee = new Set();
+        
+            const maintenant = dateReference || new Date();
+            const debutSemaine = new Date(maintenant.getFullYear(), maintenant.getMonth(), maintenant.getDate() - maintenant.getDay() + (maintenant.getDay() === 0 ? -6 : 1));
+            const debutMois = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
+            const debutAnnee = new Date(maintenant.getFullYear(), 0, 1);
+            const heuresTravailParSemaine = 35;
+            const heuresSuppContractuellesParSemaine = 2.5; // Ajout de la constante pour les heures supp contractuelles
+        
+            entrees.forEach(entree => {
+                const dateEntree = new Date(entree.date.split('-').join('/'));
+                const duree = entree.duree;
+        
+                // Calcul du total par semaine
+                if (dateEntree >= debutSemaine && dateEntree <= maintenant) {
+                    totalSemaine.heures += duree.heures;
+                    totalSemaine.minutes += duree.minutes;
+                    if (totalSemaine.minutes >= 60) {
+                        totalSemaine.heures += Math.floor(totalSemaine.minutes / 60);
+                        totalSemaine.minutes %= 60;
+                    }
+                }
+        
+                // Calcul du total par mois
+                if (dateEntree.getFullYear() === maintenant.getFullYear() && dateEntree.getMonth() === maintenant.getMonth()) {
+                    totalMois.heures += duree.heures;
+                    totalMois.minutes += duree.minutes;
+                    if (totalMois.minutes >= 60) {
+                        totalMois.heures += Math.floor(totalMois.minutes / 60);
+                        totalMois.minutes %= 60;
+                    }
+                    joursTravaillesMois.add(entree.date);
+                }
+        
+                // Calcul du total par année
+                if (dateEntree.getFullYear() === maintenant.getFullYear()) {
+                    totalAnnee.heures += duree.heures;
+                    totalAnnee.minutes += duree.minutes;
+                    if (totalAnnee.minutes >= 60) {
+                        totalAnnee.heures += Math.floor(totalAnnee.minutes / 60);
+                        totalAnnee.minutes %= 60;
+                    }
+                    joursTravaillesAnnee.add(entree.date);
+                }
+            });
+        
+            // Calcul des heures supplémentaires
+            const totalMinutesSemaine = totalSemaine.heures * 60 + totalSemaine.minutes;
+            const totalMinutesMois = totalMois.heures * 60 + totalMois.minutes;
+            const totalMinutesAnnee = totalAnnee.heures * 60 + totalAnnee.minutes;
+            const minutesTravailParSemaine = heuresTravailParSemaine * 60;
+            const minutesSuppContractuellesParSemaine = heuresSuppContractuellesParSemaine * 60; // Conversion des heures supp contractuelles en minutes
+        
+            if (totalMinutesSemaine > minutesTravailParSemaine) {
+                const diff = totalMinutesSemaine - minutesTravailParSemaine;
+                const diffAdjusted = Math.max(0, diff - minutesSuppContractuellesParSemaine); // Soustraction des heures supp contractuelles, et s'assurer que le résultat n'est pas négatif
+                suppSemaine.heures = Math.floor(diffAdjusted / 60);
+                suppSemaine.minutes = diffAdjusted % 60;
+            } else {
+                suppSemaine.heures = 0;
+                suppSemaine.minutes = 0;
+            }
+            if (totalMinutesMois > minutesTravailParSemaine) {
+                const diff = totalMinutesMois - minutesTravailParSemaine;
+                 const diffAdjusted = Math.max(0, diff - minutesSuppContractuellesParSemaine);
+                suppMois.heures = Math.floor(diffAdjusted / 60);
+                suppMois.minutes = diffAdjusted % 60;
+            }
+             else {
+                suppMois.heures = 0;
+                suppMois.minutes = 0;
+            }
+            if (totalMinutesAnnee > minutesTravailParSemaine) {
+                const diff = totalMinutesAnnee - minutesTravailParSemaine;
+                const diffAdjusted = Math.max(0, diff - minutesSuppContractuellesParSemaine);
+                suppAnnee.heures = Math.floor(diffAdjusted / 60);
+                suppAnnee.minutes = diffAdjusted % 60;
+            }
+            else {
+                suppAnnee.heures = 0;
+                suppAnnee.minutes = 0;
+            }
+        
+            return {
+                totalSemaine,
+                totalMois,
+                totalAnnee,
+                suppSemaine,
+                suppMois,
+                suppAnnee,
+                joursTravaillesMois: joursTravaillesMois.size,
+                joursTravaillesAnnee: joursTravaillesAnnee.size
+            };
+        }
+        
+        
+
+        // Fonction pour mettre à jour l'affichage des totaux
+        function mettreAJourTotaux(dateReference) {
+            const totaux = calculerTotaux(dateReference);
+            totalSemaineDisplay.textContent = formaterDuree(totaux.totalSemaine.heures, totaux.totalSemaine.minutes);
+            totalMoisDisplay.textContent = formaterDuree(totaux.totalMois.heures, totaux.totalMois.minutes);
+            totalAnneeDisplay.textContent = formaterDuree(totaux.totalAnnee.heures, totaux.totalAnnee.minutes);
+            suppSemaineDisplay.textContent = formaterDuree(totaux.suppSemaine.heures, totaux.suppSemaine.minutes);
+            suppMoisDisplay.textContent = formaterDuree(totaux.suppMois.heures, totaux.suppMois.minutes);
+            suppAnneeDisplay.textContent = formaterDuree(totaux.suppAnnee.heures, totaux.suppAnnee.minutes);
+            joursTravaillesMoisDisplay.textContent = `${totaux.joursTravaillesMois} jours`;
+            joursTravaillesAnneeDisplay.textContent = `${totaux.joursTravaillesAnnee} jours`;
+        }
+
+        // Fonction pour générer le calendrier annuel
+        function genererCalendrierAnnuel(annee, mois) {
+            calendrierAnnuelDiv.innerHTML = '';
+            let dateRef = new Date();
+            if(annee !== undefined){
+                dateRef = new Date(annee, 0, 1);
+            }
+            if(mois !== undefined){
+                 dateRef = new Date(annee, mois, 1);
+            }
+            const anneeAffiche = dateRef.getFullYear();
+            let moisAffiche = dateRef.getMonth();
+
+            for (let m = 0; m < 12; m++) {
+                if(mois !== undefined){
+                    m = mois;
+                }
+                const nbJours = joursParMois[m];
+                const moisDiv = document.createElement('div');
+                moisDiv.classList.add('mois-container');
+                moisDiv.innerHTML = `<h3 class="text-lg font-semibold text-gray-800 mb-2 text-center">${moisFrancais[m]} ${anneeAffiche}</h3>`;
+
+                const calendrierMois = document.createElement('table');
+                calendrierMois.classList.add('calendrier-mois');
+                const thead = document.createElement('thead');
+                thead.classList.add('bg-gray-100', 'text-gray-700');
+                thead.innerHTML = `
+                    <tr>
+                        <th class="px-2 py-1 border border-gray-300 text-xs font-semibold uppercase tracking-wider">Lun</th>
+                        <th class="px-2 py-1 border border-gray-300 text-xs font-semibold uppercase tracking-wider">Mar</th>
+                        <th class="px-2 py-1 border border-gray-300 text-xs font-semibold uppercase tracking-wider">Mer</th>
+                        <th class="px-2 py-1 border border-gray-300 text-xs font-semibold uppercase tracking-wider">Jeu</th>
+                        <th class="px-2 py-1 border border-gray-300 text-xs font-semibold uppercase tracking-wider">Ven</th>
+                        <th class="px-2 py-1 border border-gray-300 text-xs font-semibold uppercase tracking-wider">Sam</th>
+                        <th class="px-2 py-1 border border-gray-300 text-xs font-semibold uppercase tracking-wider">Dim</th>
+                    </tr>
+                `;
+                calendrierMois.appendChild(thead);
+
+                const tbody = document.createElement('tbody');
+                tbody.classList.add('bg-white');
+                let jour = 1;
+                let semaine = document.createElement('tr');
+                for (let i = 0; i < new Date(anneeAffiche, m, 1).getDay()- 1; i++) {
+                    const td = document.createElement('td');
+                    td.classList.add('px-2', 'py-1', 'border', 'border-gray-300');
+                    semaine.appendChild(td);
+                }
+
+while (jour <= nbJours) {
+                    const td = document.createElement('td');
+                    td.classList.add('px-2', 'py-1', 'border', 'border-gray-300', 'text-sm', 'text-center');
+                    td.textContent = jour;
+                    const dateCourante = `${anneeAffiche}-${String(m + 1).padStart(2, '0')}-${String(jour).padStart(2, '0')}`;
+                    const entreesJour = entrees.filter(e => e.date === dateCourante);
+                    if (entreesJour.length > 0) {
+                        td.classList.add('jour-travaille');
+                        entreesJour.forEach(entree => {
+                            const span = document.createElement('span');
+                            span.classList.add('entree-jour');
+                            span.textContent = `${entree.heureDebut} - ${entree.heureFin}`;
+                            td.appendChild(span);
+                        });
+                    }
+                    semaine.appendChild(td);
+                    if (semaine.cells.length === 7) {
+                        tbody.appendChild(semaine);
+                        semaine = document.createElement('tr');
+                    }
+                    jour++;
+                }
+                while (semaine.cells.length < 7) {
+                    const td = document.createElement('td');
+                    td.classList.add('px-2', 'py-1', 'border', 'border-gray-300');
+                    semaine.appendChild(td);
+                }
+                if (semaine.cells.length > 0) {
+                    tbody.appendChild(semaine);
+                }
+                calendrierMois.appendChild(tbody);
+                moisDiv.appendChild(calendrierMois);
+                calendrierAnnuelDiv.appendChild(moisDiv);
+                 if(mois !== undefined){
+                    break;
+                }
+            }
+        }
+
+        // Fonction pour générer le graphique des heures annuelles par mois
+        function genererGraphique(annee) {
+            const anneeGraph = annee || new Date().getFullYear();
+            const heuresParMois = Array(12).fill(0);
+            const minutesParMois = Array(12).fill(0);
+
+            entrees.forEach(entree => {
+                const dateEntree = new Date(entree.date.split('-').join('/'));
+                if(dateEntree.getFullYear() === anneeGraph){
+                    const mois = dateEntree.getMonth();
+                    heuresParMois[mois] += entree.duree.heures;
+                    minutesParMois[mois] += entree.duree.minutes;
+                }
+            });
+
+            for (let i = 0; i < 12; i++) {
+                heuresParMois[i] += Math.floor(minutesParMois[i] / 60);
+                minutesParMois[i] %= 60;
+            }
+             if (chartInstance) {
+                chartInstance.destroy();
+            }
+            const ctx = graphiqueHeuresAnnuellesCanvas.getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: moisFrancais,
+                    datasets: [{
+                        label: 'Heures travaillées',
+                        data: heuresParMois,
+                        backgroundColor: 'rgba(56, 161, 105, 0.6)',
+                        borderColor: 'rgba(56, 161, 105, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `Heures de travail par mois en ${anneeGraph}`,
+                            font: {
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                             ticks: {
+                                callback: function (value) {
+                                    return value + ' h';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Fonction pour initialiser la liste des années dans le select
+        function initialiserListeAnnees() {
+            const anneeActuelle = new Date().getFullYear();
+            for (let i = anneeActuelle - 5; i <= anneeActuelle + 5; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i;
+                selectAnneeInput.appendChild(option);
+            }
+            selectAnneeInput.value = anneeActuelle;
+        }
+
+        // Fonction pour charger les entrées depuis le localStorage
+        function chargerEntrees() {
+            if (localStorage.getItem('heuresTravailEntries')) {
+                entrees = JSON.parse(localStorage.getItem('heuresTravailEntries'));
+                entrees.forEach(entree => {
+                    const nouvelleEntree = document.createElement('tr');
+                    nouvelleEntree.innerHTML = `
+                        <td class="px-5 py-5 border-b border-gray-200 text-sm"><span class="font-italic text-gray-800">${entree.date}</span></td>
+                        <td class="px-5 py-5 border-b border-gray-200 text-sm"><span class="font-medium text-blue-600">${entree.heureDebut}</span></td>
+                        <td class="px-5 py-5 border-b border-gray-200 text-sm"><span class="font-medium text-blue-600">${entree.heureFin}</span></td>
+                        <td class="px-5 py-5 border-b border-gray-200 text-sm"><span class="font-semibold text-green-600">${formaterDuree(entree.duree.heures, entree.duree.minutes)}</span></td>
+                    `;
+                    const premiereLigne = tableauEntrees.querySelector('tr');
+                    if (premiereLigne && premiereLigne.textContent.includes("Aucune entrée ajoutée")) {
+                        tableauEntrees.innerHTML = '';
+                    }
+                    tableauEntrees.appendChild(nouvelleEntree);
+                });
+            }
+        }
+
+        // Fonction pour enregistrer les données dans un fichier JSON
+        function enregistrerDonnees() {
+            const data = { entrees: entrees };
+            const jsonData = JSON.stringify(data);
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'heures_travail.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            alert('Données enregistrées dans le fichier heures_travail.json');
+        }
+
+        // Fonction pour charger les données depuis un fichier JSON
+        function chargerDonnees() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = function(event) {
+                const file = event.target.files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const jsonData = JSON.parse(e.target.result);
+                        if (jsonData && jsonData.entrees) {
+                            entrees = jsonData.entrees;
+                            tableauEntrees.innerHTML = '';
+                            entrees.forEach(entree => {
+                                const nouvelleEntree = document.createElement('tr');
+                                nouvelleEntree.innerHTML = `
+                                    <td class="px-5 py-5 border-b border-gray-200 text-sm"><span class="font-italic text-gray-800">${entree.date}</span></td>
+                                    <td class="px-5 py-5 border-b border-gray-200 text-sm"><span class="font-medium text-blue-600">${entree.heureDebut}</span></td>
+                                    <td class="px-5 py-5 border-b border-gray-200 text-sm"><span class="font-medium text-blue-600">${entree.heureFin}</span></td>
+                                    <td class="px-5 py-5 border-b border-gray-200 text-sm"><span class="font-semibold text-green-600">${formaterDuree(entree.duree.heures, entree.duree.minutes)}</span></td>
+                                `;
+                                tableauEntrees.appendChild(nouvelleEntree);
+                            });
+                            mettreAJourTotaux();
+                            genererCalendrierAnnuel();
+                            genererGraphique();
+                            alert('Données chargées depuis le fichier.');
+                        } else {
+                            alert('Fichier invalide : le fichier ne contient pas de données valides.');
+                        }
+                    } catch (error) {
+                        alert('Erreur de lecture du fichier : ' + error.message);
+                    }
+                };
+                reader.onerror = function() {
+                    alert('Erreur de lecture du fichier.');
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        // Événements
+        ajouterEntreeBtn.addEventListener('click', ajouterEntree);
+        selectMoisInput.addEventListener('change', () => {
+            const moisSelectionne = parseInt(selectMoisInput.value);
+            const anneeSelectionnee = parseInt(selectAnneeInput.value);
+            mettreAJourTotaux(new Date(anneeSelectionnee, moisSelectionne, 1));
+            genererCalendrierAnnuel(anneeSelectionnee, moisSelectionne);
+        });
+
+        selectAnneeInput.addEventListener('change', () => {
+            const moisSelectionne = parseInt(selectMoisInput.value);
+            const anneeSelectionnee = parseInt(selectAnneeInput.value);
+             mettreAJourTotaux(new Date(anneeSelectionnee, moisSelectionne, 1));
+            genererCalendrierAnnuel(anneeSelectionnee, moisSelectionne);
+            genererGraphique(anneeSelectionnee);
+        });
+        enregistrerFichierBtn.addEventListener('click', enregistrerDonnees);
+        chargerFichierBtn.addEventListener('click', chargerDonnees);
+
+        // Initialisation
+        initialiserListeAnnees();
+        chargerEntrees();
+        mettreAJourTotaux();
+        genererCalendrierAnnuel();
+        genererGraphique();
+    </script>
+</body>
+</html>
